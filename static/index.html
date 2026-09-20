@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>AI Data Analyst</title>
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f5f7fb;
+            color: #222;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 1200px;
+            margin: 40px auto;
+        }
+
+        h1 {
+            margin-bottom: 5px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        /* ============================
+           UPLOAD
+        ============================ */
+
+        .upload-box {
+            border: 2px dashed #aaa;
+            border-radius: 10px;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .upload-box p {
+            color: #666;
+        }
+
+        input[type="file"] {
+            margin: 15px 0;
+            font-size: 15px;
+        }
+
+        button {
+            padding: 12px 22px;
+            border: none;
+            border-radius: 8px;
+            background: #111827;
+            color: white;
+            cursor: pointer;
+            font-size: 15px;
+        }
+
+        button:hover {
+            background: #374151;
+        }
+
+        button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        .file-list {
+            margin-top: 20px;
+        }
+
+        .file-item {
+            background: #f3f4f6;
+            padding: 10px 15px;
+            margin-top: 7px;
+            border-radius: 6px;
+        }
+
+        .success {
+            color: #15803d;
+        }
+
+        .error {
+            color: #b91c1c;
+        }
+
+        /* ============================
+           QUESTION
+        ============================ */
+
+        .search-box {
+            display: flex;
+            gap: 10px;
+        }
+
+        #question {
+            flex: 1;
+            padding: 14px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+
+        /* ============================
+           RESULT
+        ============================ */
+
+        .loading {
+            display: none;
+            margin-bottom: 20px;
+        }
+
+        .explanation {
+            font-size: 16px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+        }
+
+        .chart {
+            max-width: 100%;
+            margin-top: 20px;
+            border-radius: 8px;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            margin-top: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+        }
+
+        th {
+            background: #f3f4f6;
+        }
+
+        .query {
+            background: #111827;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+
+<div class="container">
+
+
+    <h1>AI Data Analyst</h1>
+
+    <div class="subtitle">
+        Upload CSV or Excel files and ask questions about your data.
+    </div>
+
+
+    <!-- =========================================
+         UPLOAD CARD
+    ========================================== -->
+
+    <div class="card">
+
+        <h2>Upload your data</h2>
+
+        <div class="upload-box">
+
+            <p>
+                Select CSV or Excel files
+            </p>
+
+            <p>
+                Supported formats:
+                <strong>.csv</strong>,
+                <strong>.xlsx</strong>,
+                <strong>.xls</strong>
+            </p>
+
+
+            <input
+                id="dataFiles"
+                type="file"
+                accept=".csv,.xlsx,.xls"
+                multiple
+            >
+
+            <br>
+
+
+            <button
+                id="uploadButton"
+                onclick="uploadFiles()"
+            >
+                Upload Files
+            </button>
+
+        </div>
+
+
+        <div id="uploadStatus"></div>
+
+        <div
+            id="fileList"
+            class="file-list">
+        </div>
+
+    </div>
+
+
+    <!-- =========================================
+         QUESTION CARD
+    ========================================== -->
+
+    <div class="card">
+
+        <h2>Ask your data</h2>
+
+        <div class="search-box">
+
+            <input
+                id="question"
+                type="text"
+                placeholder="Example: Which product has the highest sales?"
+            >
+
+            <button onclick="askQuestion()">
+                Ask
+            </button>
+
+        </div>
+
+    </div>
+
+
+    <!-- =========================================
+         LOADING
+    ========================================== -->
+
+    <div
+        id="loading"
+        class="loading">
+
+        Analyzing your data...
+
+    </div>
+
+
+    <!-- =========================================
+         RESULT
+    ========================================== -->
+
+    <div id="result"></div>
+
+
+</div>
+
+
+<script>
+
+
+// ======================================================
+// UPLOAD FILES
+// ======================================================
+
+async function uploadFiles() {
+
+    const input =
+        document.getElementById("dataFiles");
+
+    const status =
+        document.getElementById("uploadStatus");
+
+    const fileList =
+        document.getElementById("fileList");
+
+    const button =
+        document.getElementById("uploadButton");
+
+
+    const files = input.files;
+
+
+    if (files.length === 0) {
+
+        status.innerHTML = `
+            <p class="error">
+                Please select at least one CSV or Excel file.
+            </p>
+        `;
+
+        return;
+    }
+
+
+    // ----------------------------------------------
+    // Create FormData
+    // ----------------------------------------------
+
+    const formData = new FormData();
+
+
+    for (const file of files) {
+
+        formData.append(
+            "files",
+            file
+        );
+
+    }
+
+
+    // ----------------------------------------------
+    // UI
+    // ----------------------------------------------
+
+    button.disabled = true;
+
+    button.innerText =
+        "Uploading...";
+
+    status.innerHTML =
+        "<p>Uploading files...</p>";
+
+
+    try {
+
+        const response = await fetch(
+            "/upload",
+            {
+                method: "POST",
+                body: formData
+            }
+        );
+
+
+        const data =
+            await response.json();
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                data.detail ||
+                "Upload failed"
+            );
+
+        }
+
+
+        // ------------------------------------------
+        // Upload success
+        // ------------------------------------------
+
+        status.innerHTML = `
+            <p class="success">
+                ✓ Files uploaded successfully.
+            </p>
+        `;
+
+
+        // ------------------------------------------
+        // Show original files
+        // ------------------------------------------
+
+        fileList.innerHTML = `
+            <h3>Uploaded files</h3>
+        `;
+
+
+        for (
+            const filename
+            of data.uploaded_files
+        ) {
+
+            fileList.innerHTML += `
+                <div class="file-item">
+                    📄 ${escapeHtml(filename)}
+                </div>
+            `;
+
+        }
+
+
+        // ------------------------------------------
+        // Show generated CSV files
+        // ------------------------------------------
+
+        if (
+            data.generated_files &&
+            data.generated_files.length > 0
+        ) {
+
+            fileList.innerHTML += `
+                <h3>
+                    Data available for analysis
+                </h3>
+            `;
+
+
+            for (
+                const filename
+                of data.generated_files
+            ) {
+
+                fileList.innerHTML += `
+                    <div class="file-item">
+                        📊 ${escapeHtml(filename)}
+                    </div>
+                `;
+
+            }
+
+        }
+
+
+        // ------------------------------------------
+        // Show errors
+        // ------------------------------------------
+
+        if (
+            data.errors &&
+            data.errors.length > 0
+        ) {
+
+            fileList.innerHTML += `
+                <h3>Upload errors</h3>
+            `;
+
+
+            for (
+                const error
+                of data.errors
+            ) {
+
+                fileList.innerHTML += `
+                    <div class="file-item error">
+                        ⚠ ${escapeHtml(error)}
+                    </div>
+                `;
+
+            }
+
+        }
+
+
+        // Clear file selector
+
+        input.value = "";
+
+
+    }
+    catch (error) {
+
+        status.innerHTML = `
+            <p class="error">
+                ✗ ${escapeHtml(error.message)}
+            </p>
+        `;
+
+    }
+    finally {
+
+        button.disabled = false;
+
+        button.innerText =
+            "Upload Files";
+
+    }
+
+}
+
+
+// ======================================================
+// ASK QUESTION
+// ======================================================
+
+async function askQuestion() {
+
+    const question =
+        document.getElementById("question").value;
+
+    const result =
+        document.getElementById("result");
+
+    const loading =
+        document.getElementById("loading");
+
+
+    if (!question.trim()) {
+
+        alert(
+            "Please enter a question."
+        );
+
+        return;
+    }
+
+
+    loading.style.display =
+        "block";
+
+    result.innerHTML = "";
+
+
+    try {
+
+        const response = await fetch(
+            "/ask",
+            {
+                method: "POST",
+
+                headers: {
+                    "Content-Type": "application/json"
+                },
+
+                body: JSON.stringify({
+                    question: question
+                })
+            }
+        );
+
+
+        const data =
+            await response.json();
+
+
+        // ==========================================
+        // ERROR
+        // ==========================================
+
+        if (data.type === "error") {
+
+            result.innerHTML = `
+
+                <div class="card">
+
+                    <h3>Error</h3>
+
+                    <p class="error">
+                        ${escapeHtml(
+                            data.error
+                        )}
+                    </p>
+
+                </div>
+
+            `;
+
+            return;
+        }
+
+
+        // ==========================================
+        // TEXT
+        // ==========================================
+
+        if (data.type === "text") {
+
+            result.innerHTML = `
+
+                <div class="card">
+
+                    <h2>Answer</h2>
+
+                    <div class="explanation">
+                        ${escapeHtml(
+                            data.answer
+                        )}
+                    </div>
+
+                </div>
+
+            `;
+
+            return;
+        }
+
+
+        // ==========================================
+        // TABLE
+        // ==========================================
+
+        if (data.type === "table") {
+
+            let html = `
+
+                <div class="card">
+
+                    <h2>Analysis</h2>
+
+                    <div class="explanation">
+                        ${escapeHtml(
+                            data.explanation
+                        )}
+                    </div>
+
+
+                    <h3>SQL Query</h3>
+
+                    <div class="query">
+                        ${escapeHtml(
+                            data.query
+                        )}
+                    </div>
+
+
+                    <h3>Data</h3>
+
+                    <div class="table-container">
+
+                        <table>
+
+                            <thead>
+
+                                <tr>
+            `;
+
+
+            for (
+                const column
+                of data.columns
+            ) {
+
+                html += `
+                    <th>
+                        ${escapeHtml(column)}
+                    </th>
+                `;
+
+            }
+
+
+            html += `
+
+                                </tr>
+
+                            </thead>
+
+                            <tbody>
+
+            `;
+
+
+            for (
+                const row
+                of data.data
+            ) {
+
+                html += "<tr>";
+
+
+                for (
+                    const column
+                    of data.columns
+                ) {
+
+                    html += `
+
+                        <td>
+                            ${escapeHtml(
+                                String(
+                                    row[column] ?? ""
+                                )
+                            )}
+                        </td>
+
+                    `;
+
+                }
+
+
+                html += "</tr>";
+
+            }
+
+
+            html += `
+
+                            </tbody>
+
+                        </table>
+
+                    </div>
+
+                </div>
+
+            `;
+
+
+            result.innerHTML =
+                html;
+
+            return;
+        }
+
+
+        // ==========================================
+        // CHART
+        // ==========================================
+
+        if (data.type === "chart") {
+
+            result.innerHTML = `
+
+                <div class="card">
+
+                    <h2>Visualization</h2>
+
+                    <img
+                        class="chart"
+                        src="${data.chart_url}"
+                        alt="Generated chart"
+                    >
+
+
+                    <h2>Explanation</h2>
+
+                    <div class="explanation">
+                        ${escapeHtml(
+                            data.explanation
+                        )}
+                    </div>
+
+
+                    <h3>SQL Query</h3>
+
+                    <div class="query">
+                        ${escapeHtml(
+                            data.query
+                        )}
+                    </div>
+
+                </div>
+
+            `;
+
+            return;
+        }
+
+
+    }
+    catch (error) {
+
+        result.innerHTML = `
+
+            <div class="card">
+
+                <h3>Error</h3>
+
+                <p class="error">
+                    ${escapeHtml(
+                        error.message
+                    )}
+                </p>
+
+            </div>
+
+        `;
+
+    }
+    finally {
+
+        loading.style.display =
+            "none";
+
+    }
+
+}
+
+
+// ======================================================
+// HTML ESCAPE
+// ======================================================
+
+function escapeHtml(value) {
+
+    const div =
+        document.createElement("div");
+
+    div.textContent =
+        value;
+
+    return div.innerHTML;
+
+}
+
+
+// ======================================================
+// ENTER KEY
+// ======================================================
+
+document
+    .getElementById("question")
+    .addEventListener(
+        "keydown",
+        function(event) {
+
+            if (event.key === "Enter") {
+
+                askQuestion();
+
+            }
+
+        }
+    );
+
+
+</script>
+
+
+</body>
+
+</html>
